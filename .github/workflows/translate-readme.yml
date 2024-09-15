@@ -1,4 +1,5 @@
 name: Translate README
+# 注意需要推送..所以要开启写入权限 Settings -> Actions -> General -> Workflow permissions:Read and write permissions
 
 on:
   workflow_dispatch:
