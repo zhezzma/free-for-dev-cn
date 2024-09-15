@@ -10,38 +10,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
+      - name: Clone ripienaar/free-for-dev
+        run: |
+          git clone https://github.com/ripienaar/free-for-dev.git free-for-dev
 
-    - name: Install dependencies
-      run: |
-        npm install
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
 
-    - name: Clone ripienaar/free-for-dev
-      run: |
-        git clone https://github.com/ripienaar/free-for-dev.git free-for-dev
-        
-    - name: Translate README
-      env:
-        OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        OPENAI_MODEL_ID: ${{ secrets.OPENAI_MODEL_ID }}
-      run: |
-        node translate.js free-for-dev/README.md README.md
+      - name: Install dependencies
+        run: |
+          npm install
+          
+      - name: Translate README
+        env:
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL_ID: ${{ secrets.OPENAI_MODEL_ID }}
+        run: |
+          node translate.js free-for-dev/README.md README.md
 
-    - name: Commit and push if changed
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git config --global user.name "GitHub Actions"
-        git add README.md
-        git commit -m "Update translated README" || echo "No changes to commit"
-        git push
+      - name: Commit and push if changed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add README.md
+          git commit -m "Update README.md" || echo "No changes to commit"
+          git push
