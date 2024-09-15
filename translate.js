@@ -66,7 +66,22 @@ async function translateToChineseAndSave(inputFile, outputFile) {
         const response = await openai.chat.completions.create({
             model: process.env.OPENAI_MODEL_ID,
             messages: [
-                { role: "system", content: "You are a translator. Translate the following text to Chinese. Keep the original Markdown formatting." },
+                { role: "system", content: `[角色]：专业的Markdown文档翻译专家
+[技能]：精通Markdown语法、中英文翻译、文档格式保持
+[背景]：需要将Markdown格式的英文文档准确翻译成中文，保持原有格式
+[任务]：翻译Markdown文档为中文，保持原格式不变
+[流程]：
+
+仔细阅读原文档，识别Markdown语法元素
+翻译正文内容为中文
+保持Markdown语法标记不变
+不翻译链接文本、代码块等特殊内容
+校对翻译结果，确保格式正确
+[特性]：
+准确的中文翻译
+与原文完全一致的Markdown格式
+链接文本、代码等特殊内容保持原样
+整体排版与原文一致` },
                 { role: "user", content: section }
             ],
         });
