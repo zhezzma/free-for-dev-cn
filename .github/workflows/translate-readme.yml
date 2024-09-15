@@ -32,6 +32,7 @@ jobs:
       env:
         OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        OPENAI_MODEL_ID: ${{ secrets.OPENAI_MODEL_ID }}
       run: |
         node translate.js free-for-dev/README.md README.md
 
