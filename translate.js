@@ -10,13 +10,14 @@ function delay(ms) {
 
 const maxSectionLength = 8000;
 function splitContent(content) {
+    
     // 先按header分割
     const sections = content.split(/^(#{1,6}\s.+)$/m);
     let combinedSections = [];
 
     // 合并header和其内容
     for (let i = 1; i < sections.length; i += 2) {
-        combinedSections.push(sections[i] + '\n' + (sections[i + 1] || '').trim());
+        combinedSections.push(sections[i] + '\n' + (sections[i + 1] || ''));
     }
     // 合并相邻的小节
     let merged = true;
@@ -40,14 +41,12 @@ function splitContent(content) {
             let currentSection = '';
             for (let line of lines) {
                 if (currentSection.length + line.length > maxSectionLength) {
-                    finalSections.push(currentSection.trim());
+                    finalSections.push(currentSection);
                     currentSection = '';
                 }
                 currentSection += line + '\n';
             }
-            if (currentSection.trim()) {
-                finalSections.push(currentSection.trim());
-            }
+            finalSections.push(currentSection);
         } else {
             finalSections.push(section);
         }
@@ -66,7 +65,8 @@ async function translateToChineseAndSave(inputFile, outputFile) {
         const response = await openai.chat.completions.create({
             model: process.env.OPENAI_MODEL_ID,
             messages: [
-                { role: "system", content: `[角色]：专业的Markdown文档翻译专家
+                {
+                    role: "system", content: `[角色]：专业的Markdown文档翻译专家
 [技能]：精通Markdown语法、中英文翻译、文档格式保持
 [背景]：需要将Markdown格式的英文文档准确翻译成中文，保持原有格式
 [任务]：翻译Markdown文档为中文，保持原格式不变
@@ -105,7 +105,16 @@ async function translateToChineseAndSave(inputFile, outputFile) {
             .sort((a, b) => a.index - b.index)
             .map(item => item.content);
 
-        const translatedContent = sortedTranslations.join('\n\n');
+        const translatedContent = sortedTranslations.reduce((acc, current, index) => {
+            if (index === 0) {
+                return current;
+            }
+            if (current.startsWith('#')) {
+                return acc + '\n\n' + current;
+            } else {
+                return acc + '\n' + current;
+            }
+        }, '');
 
         writeFileSync(outputFile, translatedContent.trim());
         console.log(`Translation completed and saved to ${outputFile}`);
