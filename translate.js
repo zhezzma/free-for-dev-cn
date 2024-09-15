@@ -8,125 +8,195 @@ function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+
+const openai = new OpenAI({
+    baseURL: process.env.OPENAI_BASE_URL,
+    apiKey: process.env.OPENAI_API_KEY,
+});
+
+
+
 const maxSectionLength = 8000;
+
+function convertToId(header) {
+    return header.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
 function splitContent(content) {
+    // 首先，统一换行符为 \n
+    content = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-    // 先按header分割
-    const sections = content.split(/^(#{1,2}\s.+)$/m);
-    let combinedSections = [];
+    const sections = content.split(/^(#{1,2}\s.+(?:\n+|$))/m);
+    let result = [];
+    let currentSection = null;
 
-    // 合并header和其内容
     for (let i = 1; i < sections.length; i += 2) {
-        combinedSections.push(sections[i] + '\n' + (sections[i + 1] || ''));
-    }
-    // 合并相邻的小节
-    let merged = true;
-    while (merged) {
-        merged = false;
-        for (let i = 0; i < combinedSections.length - 1; i++) {
-            if (combinedSections[i].length + combinedSections[i + 1].length <= maxSectionLength) {
-                combinedSections[i] += '\n\n' + combinedSections[i + 1];
-                combinedSections.splice(i + 1, 1);
-                merged = true;
-                break;
+        const headerWithNewlines = sections[i];
+        const [header, ...newlines] = headerWithNewlines.split('\n');
+        const text = sections[i + 1] || '';
+
+        currentSection = {
+            id: convertToId(header.replace(/^#+\s/, '')),
+            header: header,
+            text: text,
+            sections: [],
+            leadingSpaces: [],
+            translations: []
+        };
+
+        const lines = text.split('\n');
+        let currentSubSection = '';
+        let currentLeadingSpace = '';
+
+        for (let line of lines) {
+            const lineLeadingSpace = line.match(/^(\s*)/)[1];
+
+            if (currentSubSection.length + line.length > maxSectionLength) {
+                currentSection.sections.push(currentSubSection);
+                currentSection.leadingSpaces.push(currentLeadingSpace);
+                currentSubSection = '';
+                currentLeadingSpace = '';
+                continue;
             }
+
+            if (currentSubSection === '') {
+                currentLeadingSpace = lineLeadingSpace;
+            }
+
+            currentSubSection += line + '\n';
         }
+
+        if (currentSubSection.trim().length > 0) {
+            currentSection.sections.push(currentSubSection);
+            currentSection.leadingSpaces.push(currentLeadingSpace);
+        }
+
+        result.push(currentSection);
     }
 
-    // 进一步分割大段落
-    let finalSections = [];
-    for (let section of combinedSections) {
-        if (section.length > maxSectionLength) {
-            let lines = section.split('\n');
-            let currentSection = '';
-            for (let line of lines) {
-                if (currentSection.length + line.length > maxSectionLength) {
-                    finalSections.push(currentSection);
-                    currentSection = '';
-                }
-                currentSection += line + '\n';
-            }
-            finalSections.push(currentSection);
-        } else {
-            finalSections.push(section);
-        }
-    }
-
-    return finalSections;
+    return result;
 }
 
-async function translateToChineseAndSave(inputFile, outputFile) {
-    const openai = new OpenAI({
-        baseURL: process.env.OPENAI_BASE_URL,
-        apiKey: process.env.OPENAI_API_KEY,
-    });
+async function translateTableOfContents(sections, openai) {
+    const tocSection = sections.find(section => section.id === 'table-of-contents');
+    if (!tocSection) {
+        console.log("Table of Contents not found");
+        return {};
+    }
 
-    async function translateSection(section, index, total) {
+    const linkRegex = /^\s*\*\s\[(.+)\]\(#(.+)\)\s*$/;
+    const idTextMap = {};
+
+    const translatedSections = await Promise.all(tocSection.sections.map(async (section, index) => {
         const response = await openai.chat.completions.create({
             model: process.env.OPENAI_MODEL_ID,
             messages: [
                 {
-                    role: "system", content: `
+                    role: "system",
+                    content: `请翻译以下目录项，保持原有的格式:
+                    1. 保持星号和缩进不变
+                    2. 只翻译方括号[]内的文本
+                    3. 保持圆括号()内的链接不变`
+                },
+                { role: "user", content: section }
+            ],
+        });
+
+        const translatedContent = response.choices[0].message.content;
+        console.log(`Translated TOC section ${index + 1} of ${tocSection.sections.length}`);
+
+        const translatedLines = translatedContent.split('\n').map(line => {
+            const match = line.match(linkRegex);
+            if (match) {
+                let [, translatedText, id] = match;
+                translatedText = translatedText.replace(/\s+/g, '');
+                idTextMap[id] = translatedText;
+                return `${tocSection.leadingSpaces[index]}* [${translatedText}](#${translatedText})`;
+            }
+            return line;
+        });
+
+        return translatedLines.join('\n');
+    }));
+
+    tocSection.translations = translatedSections;
+
+    // 替换链接
+    Object.entries(idTextMap).forEach(([id, text]) => {
+        const encodedText = encodeURIComponent(text.toLowerCase().replace(/\s+/g, '-'));
+        tocSection.translations = tocSection.translations.map(translation =>
+            translation.replace(new RegExp(`\\(#${id}\\)`, 'g'), `(#${encodedText})`));
+    });
+
+    return idTextMap;
+}
+async function translateToChineseAndSave(inputFile, outputFile) {
+    try {
+        const content = readFileSync(inputFile, 'utf8');
+        const sections = splitContent(content);
+        console.log(`Split into ${sections.length} sections`);
+
+        const idTextMap = await translateTableOfContents(sections, openai);
+
+        // 提取所有需要翻译的部分
+        const allSectionsToTranslate = sections.filter(section => section.id !== 'table-of-contents')
+            .flatMap(section =>
+                section.sections.map((text, index) => ({ sectionId: section.id, index, text }))
+            );
+
+        console.log(`Preparing to translate ${allSectionsToTranslate.length} subsections`);
+
+        // 批量翻译
+        const translatedSections = await Promise.all(allSectionsToTranslate.map(async ({ sectionId, index, text }) => {
+            const response = await openai.chat.completions.create({
+                model: process.env.OPENAI_MODEL_ID,
+                messages: [
+                    {
+                        role: "system", content: `
 请将Markdown文本翻译成中文，同时遵守以下规则:
 1. 严格保持原文的Markdown格式不变，包括但不限于标题、列表、代码块、引用等。
 2. 专有名词、缩写等可以保留英文,但在首次出现时可在括号内提供中文解释。
 3. 代码块、命令行指令等技术内容保持原样不翻译。
 4. 注意调整语序,使翻译后的文本符合中文的表达习惯,同时保持原意。
-​` },
-                { role: "user", content: section.trim() }
-            ],
-        });
-        console.log(`Translated section ${index + 1} of ${total}`);
-        return { index, section, content: response.choices[0].message.content };
-    }
+5. 保持原文的链接格式不变，只翻译链接文本。
+​`
+                    },
+                    { role: "user", content: text.trim() }
+                ],
+            });
+            console.log(`Translated subsection ${index + 1} of section ${sectionId}`);
+            return { sectionId, index, content: response.choices[0].message.content };
+        }));
 
-    try {
-        const content = readFileSync(inputFile, 'utf8');
-        const sections = splitContent(content);
-        console.log(`Split into ${sections.length} sections`);
-        // 记录每个section的前导空格
-        const leadingSpaces = sections.map(section => {
-            const match = section.match(/^(\s*)/);
-            return match ? match[1] : '';
-        });
-
-
-        const translationPromises = sections.map((section, index) =>
-            translateSection(section, index, sections.length)
-        );
-
-        const translatedSections = await Promise.all(translationPromises);
-
-        // 按原始顺序排序翻译结果
-        const sortedTranslations = translatedSections
-            .sort((a, b) => a.index - b.index)
-            .map(item =>  leadingSpaces[item.index] + item.content);
-
-        const translatedContent = sortedTranslations.reduce((acc, current, index) => {
-            if (index === 0) {
-                return current;
+        // 将翻译结果存储到相应的 section 对象中
+        sections.forEach(section => {
+            if (section.id !== 'table-of-contents') {
+                section.translations = translatedSections
+                    .filter(ts => ts.sectionId === section.id)
+                    .sort((a, b) => a.index - b.index)
+                    .map(ts => section.leadingSpaces[ts.index] + ts.content);
             }
-            if (current.startsWith('#')) {
-                return acc + '\n\n' + current;
-            } else {
-                return acc + '\n' + current;
-            }
-        }, '');
+        });
 
-        const regex = /\[([^\]]+)\]\(#([^)]+)\)/g;
+        // 替换 header 并组合成完整的翻译结果
+        const translatedContent = sections.map(section => {
+            const headerLevel = section.header.match(/^(#+)/)[1];
+            const newHeader = idTextMap[section.id] ? `${headerLevel} ${idTextMap[section.id]}` : section.header;
+            return [newHeader, ...section.translations].join('\n\n');
+        }).join('\n\n');
 
-        const replacer = (match, p1, p2) => {
-            const linkText = p1.replace(/\s+/g, '');
-            const linkRef = p2.replace(/\s+/g, '');
-            return `[${linkText}](#${linkRef})`;
-        };
-        writeFileSync(outputFile, translatedContent.trim().replace(regex, replacer).replace("目录", "Table of Contents"));
+        // // 更新链接
+        // const updatedContent = translatedContent.replace(/\[([^\]]+)\]\(#([^)]+)\)/g, (match, linkText, linkId) => {
+        //     const translatedLinkText = idTextMap[linkId] || linkText;
+        //     const encodedLinkText = encodeURIComponent(translatedLinkText.toLowerCase().replace(/\s+/g, '-'));
+        //     return `[${translatedLinkText}](#${encodedLinkText})`;
+        // });
+
+        writeFileSync(outputFile, translatedContent.trim());
         console.log(`Translation completed and saved to ${outputFile}`);
     } catch (error) {
         console.error('Error:', error);
     }
 }
-
 // 获取命令行参数
 const inputFile = process.argv[2];
 const outputFile = process.argv[3] || 'README.md';
