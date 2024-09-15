@@ -120,7 +120,7 @@ async function translateToChineseAndSave(inputFile, outputFile) {
             const linkRef = p2.replace(/\s+/g, '');
             return `[${linkText}](#${linkRef})`;
         };
-        writeFileSync(outputFile, translatedContent.trim().replace(regex, replacer));
+        writeFileSync(outputFile, translatedContent.trim().replace(regex, replacer).replace("目录", "Table of Contents"));
         console.log(`Translation completed and saved to ${outputFile}`);
     } catch (error) {
         console.error('Error:', error);
