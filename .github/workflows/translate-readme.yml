@@ -25,10 +25,8 @@ jobs:
         npm install
 
     - name: Clone ripienaar/free-for-dev
-      uses: actions/checkout@v4
-      with:
-        repository: ripienaar/free-for-dev
-        path: free-for-dev
+      run: |
+        git clone https://github.com/ripienaar/free-for-dev.git free-for-dev
         
     - name: Translate README
       env:
@@ -45,5 +43,5 @@ jobs:
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
         git config --global user.name "GitHub Actions"
         git add README.md
-        git commit -m "Update translated README" -a || echo "No changes to commit"
+        git commit -m "Update translated README" || echo "No changes to commit"
         git push
