@@ -10,7 +10,7 @@ function delay(ms) {
 
 const maxSectionLength = 8000;
 function splitContent(content) {
-    
+
     // 先按header分割
     const sections = content.split(/^(#{1,6}\s.+)$/m);
     let combinedSections = [];
@@ -71,12 +71,10 @@ async function translateToChineseAndSave(inputFile, outputFile) {
 
 1. 严格保持原文的Markdown格式不变，包括但不限于标题、列表、代码块、引用等。
 
-2. 翻译Markdown链接时,遵循以下格式:
-   - 原文: [Link text](#link-reference)
-   - 正确翻译: [链接文本](#链接引用)
-   - 错误翻译: [链接 文本](#链接 引用)
-
-   确保链接文本和引用部分在翻译后不包含空格,以保持链接的正确性。
+2. 翻译Markdown链接时，确保链接文本和链接目标都被翻译，但不要在翻译后的文本中添加空格。例如：
+   - 原文：[CI and CD](#ci-and-cd)
+   - 正确翻译：[CI和CD](#CI和CD)
+   - 错误翻译：[CI 和 CD](#CI 和 CD)
 
 3. 专有名词、缩写等可以保留英文,但在首次出现时可在括号内提供中文解释。
 
@@ -85,17 +83,23 @@ async function translateToChineseAndSave(inputFile, outputFile) {
 5. 注意调整语序,使翻译后的文本符合中文的表达习惯,同时保持原意。
 
 ​` },
-                { role: "user", content: section }
+                { role: "user", content: section.trim() }
             ],
         });
         console.log(`Translated section ${index + 1} of ${total}`);
-        return { index, content: response.choices[0].message.content };
+        return { index, section, content: response.choices[0].message.content };
     }
 
     try {
         const content = readFileSync(inputFile, 'utf8');
         const sections = splitContent(content);
         console.log(`Split into ${sections.length} sections`);
+        // 记录每个section的前导空格
+        const leadingSpaces = sections.map(section => {
+            const match = section.match(/^(\s*)/);
+            return match ? match[1] : '';
+        });
+
 
         const translationPromises = sections.map((section, index) =>
             translateSection(section, index, sections.length)
@@ -106,7 +110,7 @@ async function translateToChineseAndSave(inputFile, outputFile) {
         // 按原始顺序排序翻译结果
         const sortedTranslations = translatedSections
             .sort((a, b) => a.index - b.index)
-            .map(item => item.content);
+            .map(item =>  leadingSpaces[item.index] + item.content);
 
         const translatedContent = sortedTranslations.reduce((acc, current, index) => {
             if (index === 0) {
@@ -119,7 +123,14 @@ async function translateToChineseAndSave(inputFile, outputFile) {
             }
         }, '');
 
-        writeFileSync(outputFile, translatedContent.trim());
+        const regex = /\[([^\]]+)\]\(#([^)]+)\)/g;
+
+        const replacer = (match, p1, p2) => {
+            const linkText = p1.replace(/\s+/g, '');
+            const linkRef = p2.replace(/\s+/g, '');
+            return `[${linkText}](#$${linkRef})`;
+        };
+        writeFileSync(outputFile, translatedContent.trim().replace(regex, replacer));
         console.log(`Translation completed and saved to ${outputFile}`);
     } catch (error) {
         console.error('Error:', error);
