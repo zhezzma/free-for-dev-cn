@@ -81,7 +81,7 @@ async function translateToChineseAndSave(inputFile, outputFile) {
             console.log(`Translated section ${i + 1} of ${sections.length}`);
 
             // 添加5秒延迟
-            await delay(2000);
+            //await delay(5000);
         }
 
         writeFileSync(outputFile, translatedContent.trim());
