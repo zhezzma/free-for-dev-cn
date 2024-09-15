@@ -93,6 +93,6 @@ async function translateToChineseAndSave(inputFile, outputFile) {
 
 // 获取命令行参数
 const inputFile = process.argv[2];
-const outputFile = process.argv[3] || 'translated_content.md';
+const outputFile = process.argv[3] || 'README.md';
 
 translateToChineseAndSave(inputFile, outputFile);
