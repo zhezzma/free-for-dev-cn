@@ -1,0 +1,17 @@
+{
+  "name": "free-for-dev-cn",
+  "version": "1.0.0",
+  "main": "translate.js",
+  "type": "module",
+  "scripts": {
+    "test": "node translate.js free-for-dev/README.md README.md"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "openai": "^4.61.0"
+  }
+}

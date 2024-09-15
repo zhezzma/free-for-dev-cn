@@ -1,0 +1,44 @@
+name: Translate README
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'  # 每天运行
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Install dependencies
+      run: |
+        npm install
+
+    - name: Clone ripienaar/free-for-dev
+      uses: actions/checkout@v4
+      with:
+        repository: ripienaar/free-for-dev
+        path: free-for-dev
+        
+    - name: Translate README
+      env:
+        OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      run: |
+        node translate.js free-for-dev/README.md README.md
+
+    - name: Commit and push if changed
+      run: |
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git config --global user.name "GitHub Actions"
+        git add README.md
+        git commit -m "Update translated README" -a || echo "No changes to commit"
+        git push
