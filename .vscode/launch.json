@@ -1,14 +1,17 @@
 {
-	"version": "0.2.0",
-	"configurations": [
+  "version": "0.2.0",
+  "configurations": [
     {
       "type": "node",
       "request": "launch",
       "name": "test",
       "runtimeExecutable": "npm",
-      "runtimeArgs": [ "run", "test"],
+      "runtimeArgs": [
+        "run",
+        "test"
+      ],
       "console": "internalConsole",
       "internalConsoleOptions": "neverOpen",
-	  }
-	]
+    }
+  ]
 }
