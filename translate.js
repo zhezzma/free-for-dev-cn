@@ -71,7 +71,7 @@ async function translateToChineseAndSave(inputFile, outputFile) {
             ],
         });
         console.log(`Translated section ${index + 1} of ${total}`);
-        return response.choices[0].message.content;
+        return { index, content: response.choices[0].message.content };
     }
 
     try {
@@ -79,12 +79,18 @@ async function translateToChineseAndSave(inputFile, outputFile) {
         const sections = splitContent(content);
         console.log(`Split into ${sections.length} sections`);
 
-        const translationPromises = sections.map((section, index) => 
+        const translationPromises = sections.map((section, index) =>
             translateSection(section, index, sections.length)
         );
 
         const translatedSections = await Promise.all(translationPromises);
-        const translatedContent = translatedSections.join('\n\n');
+
+        // 按原始顺序排序翻译结果
+        const sortedTranslations = translatedSections
+            .sort((a, b) => a.index - b.index)
+            .map(item => item.content);
+
+        const translatedContent = sortedTranslations.join('\n\n');
 
         writeFileSync(outputFile, translatedContent.trim());
         console.log(`Translation completed and saved to ${outputFile}`);
