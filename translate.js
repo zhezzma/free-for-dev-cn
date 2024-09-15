@@ -12,7 +12,7 @@ const maxSectionLength = 8000;
 function splitContent(content) {
 
     // 先按header分割
-    const sections = content.split(/^(#{1,6}\s.+)$/m);
+    const sections = content.split(/^(#{1,2}\s.+)$/m);
     let combinedSections = [];
 
     // 合并header和其内容
@@ -67,21 +67,11 @@ async function translateToChineseAndSave(inputFile, outputFile) {
             messages: [
                 {
                     role: "system", content: `
-请将Markdown 文本翻译成中文，同时遵守以下规则:
-
+请将Markdown文本翻译成中文，同时遵守以下规则:
 1. 严格保持原文的Markdown格式不变，包括但不限于标题、列表、代码块、引用等。
-
-2. 翻译Markdown链接时，确保链接文本和链接目标都被翻译，但不要在翻译后的文本中添加空格。例如：
-   - 原文：[CI and CD](#ci-and-cd)
-   - 正确翻译：[CI和CD](#CI和CD)
-   - 错误翻译：[CI 和 CD](#CI 和 CD)
-
-3. 专有名词、缩写等可以保留英文,但在首次出现时可在括号内提供中文解释。
-
-4. 代码块、命令行指令等技术内容保持原样不翻译。
-
-5. 注意调整语序,使翻译后的文本符合中文的表达习惯,同时保持原意。
-
+2. 专有名词、缩写等可以保留英文,但在首次出现时可在括号内提供中文解释。
+3. 代码块、命令行指令等技术内容保持原样不翻译。
+4. 注意调整语序,使翻译后的文本符合中文的表达习惯,同时保持原意。
 ​` },
                 { role: "user", content: section.trim() }
             ],
@@ -128,7 +118,7 @@ async function translateToChineseAndSave(inputFile, outputFile) {
         const replacer = (match, p1, p2) => {
             const linkText = p1.replace(/\s+/g, '');
             const linkRef = p2.replace(/\s+/g, '');
-            return `[${linkText}](#$${linkRef})`;
+            return `[${linkText}](#${linkRef})`;
         };
         writeFileSync(outputFile, translatedContent.trim().replace(regex, replacer));
         console.log(`Translation completed and saved to ${outputFile}`);
