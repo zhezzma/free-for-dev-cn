@@ -62,27 +62,29 @@ async function translateToChineseAndSave(inputFile, outputFile) {
         apiKey: process.env.OPENAI_API_KEY,
     });
 
+    async function translateSection(section, index, total) {
+        const response = await openai.chat.completions.create({
+            model: process.env.OPENAI_MODEL_ID,
+            messages: [
+                { role: "system", content: "You are a translator. Translate the following text to Chinese. Keep the original Markdown formatting." },
+                { role: "user", content: section }
+            ],
+        });
+        console.log(`Translated section ${index + 1} of ${total}`);
+        return response.choices[0].message.content;
+    }
+
     try {
         const content = readFileSync(inputFile, 'utf8');
         const sections = splitContent(content);
-        console.log(`split into ${sections.length} sections`);
-        let translatedContent = '';
+        console.log(`Split into ${sections.length} sections`);
 
-        for (let i = 0; i < sections.length; i++) {
-            const response = await openai.chat.completions.create({
-                model: process.env.OPENAI_MODEL_ID,
-                messages: [
-                    { role: "system", content: "You are a translator. Translate the following text to Chinese. Keep the original Markdown formatting." },
-                    { role: "user", content: sections[i] }
-                ],
-            });
+        const translationPromises = sections.map((section, index) => 
+            translateSection(section, index, sections.length)
+        );
 
-            translatedContent += response.choices[0].message.content + '\n\n';
-            console.log(`Translated section ${i + 1} of ${sections.length}`);
-
-            // 添加5秒延迟
-            //await delay(5000);
-        }
+        const translatedSections = await Promise.all(translationPromises);
+        const translatedContent = translatedSections.join('\n\n');
 
         writeFileSync(outputFile, translatedContent.trim());
         console.log(`Translation completed and saved to ${outputFile}`);
