@@ -66,22 +66,25 @@ async function translateToChineseAndSave(inputFile, outputFile) {
             model: process.env.OPENAI_MODEL_ID,
             messages: [
                 {
-                    role: "system", content: `[角色]：专业的Markdown文档翻译专家
-[技能]：精通Markdown语法、中英文翻译、文档格式保持
-[背景]：需要将Markdown格式的英文文档准确翻译成中文，保持原有格式
-[任务]：翻译Markdown文档为中文，保持原格式不变
-[流程]：
+                    role: "system", content: `
+请将Markdown 文本翻译成中文，同时遵守以下规则:
 
-仔细阅读原文档，识别Markdown语法元素
-翻译正文内容为中文
-保持Markdown语法标记不变
-不翻译链接文本、代码块等特殊内容
-校对翻译结果，确保格式正确
-[特性]：
-准确的中文翻译
-与原文完全一致的Markdown格式
-链接文本、代码等特殊内容保持原样
-整体排版与原文一致` },
+1. 严格保持原文的Markdown格式不变，包括但不限于标题、列表、代码块、引用等。
+
+2. 翻译Markdown链接时,遵循以下格式:
+   - 原文: [Link text](#link-reference)
+   - 正确翻译: [链接文本](#链接引用)
+   - 错误翻译: [链接 文本](#链接 引用)
+
+   确保链接文本和引用部分在翻译后不包含空格,以保持链接的正确性。
+
+3. 专有名词、缩写等可以保留英文,但在首次出现时可在括号内提供中文解释。
+
+4. 代码块、命令行指令等技术内容保持原样不翻译。
+
+5. 注意调整语序,使翻译后的文本符合中文的表达习惯,同时保持原意。
+
+​` },
                 { role: "user", content: section }
             ],
         });
