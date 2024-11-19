@@ -40,12 +40,19 @@ function convertToId(header) {
  * 带重试机制的翻译请求
  * @param {string} text 待翻译文本
  * @param {string} role 翻译角色提示
+ * @param {Object} context 翻译上下文
+ * @param {string} context.type 翻译类型 ('toc'|'content')
+ * @param {string} context.sectionId 所属章节ID
+ * @param {number} context.index 在章节中的索引
  * @returns {Promise<string>} 翻译结果
  */
-async function translateWithRetry(text, role) {
+async function translateWithRetry(text, role, context = {}) {
+    const { type = '未知', sectionId = '未知', index = -1 } = context;
+    const contextInfo = `类型: ${type}, 章节: ${sectionId}, 索引: ${index}`;
+    
     for (let i = 0; i < CONFIG.maxRetries; i++) {
         try {
-            console.log(`开始翻译，长度: ${text.length} 字符`);
+            console.log(`开始翻译 [${contextInfo}], 长度: ${text.length} 字符`);
             const response = await openai.chat.completions.create({
                 model: process.env.OPENAI_MODEL_ID,
                 messages: [
@@ -53,15 +60,15 @@ async function translateWithRetry(text, role) {
                     { role: "user", content: text.trim() }
                 ],
             });
-            console.log('翻译成功');
+            console.log(`翻译成功 [${contextInfo}]`);
             return response.choices[0].message.content;
         } catch (error) {
-            console.error(`翻译失败 (尝试 ${i + 1}/${CONFIG.maxRetries}):`, error.message);
+            console.error(`翻译失败 [${contextInfo}] (尝试 ${i + 1}/${CONFIG.maxRetries}):`, error.message);
             if (i < CONFIG.maxRetries - 1) {
                 console.log(`等待 ${CONFIG.retryDelay}ms 后重试...`);
                 await delay(CONFIG.retryDelay);
             } else {
-                throw new Error(`翻译失败，已达到最大重试次数: ${error.message}`);
+                throw new Error(`翻译失败 [${contextInfo}]，已达到最大重试次数: ${error.message}`);
             }
         }
     }
@@ -161,7 +168,11 @@ async function translateTableOfContents(sections, openai) {
 1. 保持星号和缩进不变
 2. 只翻译方括号[]内的文本
 3. 保持圆括号()内的链接不变
-4. 确保翻译的通顺性和准确性`);
+4. 确保翻译的通顺性和准确性`, {
+            type: 'toc',
+            sectionId: 'table-of-contents',
+            index: index
+        });
 
         // 处理翻译后的目录项
         const translatedLines = translatedContent.split('\n').map(line => {
@@ -224,7 +235,11 @@ async function translateToChineseAndSave(inputFile, outputFile) {
 2. 专有名词、缩写等保留英文，首次出现时在括号内提供中文解释
 3. 代码块、命令行指令等技术内容保持原样不翻译
 4. 调整语序使翻译符合中文表达习惯，同时保持原意
-5. 保持原文的链接格式不变，只翻译链接文本`);
+5. 保持原文的链接格式不变，只翻译链接文本`, {
+                type: 'content',
+                sectionId: sectionId,
+                index: index
+            });
 
             return { sectionId, index, content: translatedContent };
         }));
