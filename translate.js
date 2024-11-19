@@ -199,8 +199,8 @@ async function translateTableOfContents(sections) {
     });
 
     console.log('目录翻译完成');
-    idTextMap['free-for.dev'] = 'free-for.dev';
-    idTextMap['Table of Contents'] = '目录';
+    idTextMap['free-for-dev'] = 'free-for.dev';
+    idTextMap['table-of-contents'] = '目录';
     return idTextMap;
 }
 
@@ -265,7 +265,7 @@ async function translateToChineseAndSave(inputFile, outputFile) {
         const translatedContent = sections.map(section => {
             const headerLevel = section.header.match(/^(#+)/)[1];
             const newHeader = idTextMap[section.id] ? `${headerLevel} ${idTextMap[section.id]}` : section.header;
-            console.log(`翻译标题: ${section.header} -> ${newHeader}`);
+            console.log(`翻译标题 idTextMap[${section.id}]: ${section.header} -> ${newHeader}`);
             return [newHeader, ...section.translations].join('\n\n');
         }).join('\n\n');
 
