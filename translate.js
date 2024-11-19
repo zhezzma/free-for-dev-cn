@@ -146,10 +146,9 @@ function splitContent(content) {
 /**
  * 翻译目录部分
  * @param {Array} sections 所有部分
- * @param {OpenAI} openai OpenAI实例
  * @returns {Object} 翻译映射
  */
-async function translateTableOfContents(sections, openai) {
+async function translateTableOfContents(sections) {
     console.log('开始翻译目录...');
     const tocSection = sections.find(section => section.id === 'table-of-contents');
     if (!tocSection) {
@@ -200,6 +199,8 @@ async function translateTableOfContents(sections, openai) {
     });
 
     console.log('目录翻译完成');
+    idTextMap['free-for.dev'] = 'free-for.dev';
+    idTextMap['Table of Contents'] = '目录';
     return idTextMap;
 }
 
@@ -229,7 +230,7 @@ async function translateToChineseAndSave(inputFile, outputFile) {
         // 批量翻译
         const translatedSections = await Promise.all(allSectionsToTranslate.map(async ({ sectionId, index, text }, totalIndex) => {
             console.log(`翻译进度: ${totalIndex + 1}/${allSectionsToTranslate.length}`);
-            const translatedContent = await translateWithRetry(text, `
+            let translatedContent = await translateWithRetry(text, `
 请将Markdown文本翻译成中文，同时遵守以下规则:
 1. 严格保持原文的Markdown格式不变，包括但不限于标题、列表、代码块、引用等
 2. 专有名词、缩写等保留英文，首次出现时在括号内提供中文解释
@@ -241,6 +242,7 @@ async function translateToChineseAndSave(inputFile, outputFile) {
                 index: index
             });
 
+            translatedContent = translatedContent.replace("(#table-of-contents)", "(#目录)");
             return { sectionId, index, content: translatedContent };
         }));
 
