@@ -2,38 +2,45 @@ import { readFileSync, writeFileSync } from 'fs';
 import { OpenAI } from 'openai';
 import dotenv from 'dotenv';
 
+// 加载环境变量
 dotenv.config();
 
+// 延迟函数，返回一个Promise，在指定的毫秒数后resolve
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-
+// 初始化OpenAI实例
 const openai = new OpenAI({
     baseURL: process.env.OPENAI_BASE_URL,
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-
-
+// 定义每个部分的最大长度
 const maxSectionLength = 8000;
 
+// 将标题转换为ID
 function convertToId(header) {
     return header.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
+
+// 将内容按标题拆分成多个部分
 function splitContent(content) {
-    // 首先，统一换行符为 \n
+    // 统一换行符为 \n
     content = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
+    // 按标题拆分内容
     const sections = content.split(/^(#{1,2}\s.+(?:\n+|$))/m);
     let result = [];
     let currentSection = null;
 
+    // 遍历拆分后的部分
     for (let i = 1; i < sections.length; i += 2) {
         const headerWithNewlines = sections[i];
         const [header, ...newlines] = headerWithNewlines.split('\n');
         const text = sections[i + 1] || '';
 
+        // 创建当前部分对象
         currentSection = {
             id: convertToId(header.replace(/^#+\s/, '')),
             header: header,
@@ -47,9 +54,11 @@ function splitContent(content) {
         let currentSubSection = '';
         let currentLeadingSpace = '';
 
+        // 遍历当前部分的每一行
         for (let line of lines) {
             const lineLeadingSpace = line.match(/^(\s*)/)[1];
 
+            // 如果当前子部分长度超过最大长度，则将其添加到sections中
             if (currentSubSection.length + line.length > maxSectionLength) {
                 currentSection.sections.push(currentSubSection);
                 currentSection.leadingSpaces.push(currentLeadingSpace);
@@ -58,6 +67,7 @@ function splitContent(content) {
                 continue;
             }
 
+            // 如果当��子部分为空，则设置当前行的前导空格
             if (currentSubSection === '') {
                 currentLeadingSpace = lineLeadingSpace;
             }
@@ -65,6 +75,7 @@ function splitContent(content) {
             currentSubSection += line + '\n';
         }
 
+        // 将剩余的子部分添加到sections中
         if (currentSubSection.trim().length > 0) {
             currentSection.sections.push(currentSubSection);
             currentSection.leadingSpaces.push(currentLeadingSpace);
@@ -76,6 +87,7 @@ function splitContent(content) {
     return result;
 }
 
+// 翻译目录部分
 async function translateTableOfContents(sections, openai) {
     const tocSection = sections.find(section => section.id === 'table-of-contents');
     if (!tocSection) {
@@ -86,6 +98,7 @@ async function translateTableOfContents(sections, openai) {
     const linkRegex = /^\s*\*\s\[(.+)\]\(#(.+)\)\s*$/;
     const idTextMap = {};
 
+    // 翻译每个目录部分
     const translatedSections = await Promise.all(tocSection.sections.map(async (section, index) => {
         const response = await openai.chat.completions.create({
             model: process.env.OPENAI_MODEL_ID,
@@ -129,6 +142,8 @@ async function translateTableOfContents(sections, openai) {
 
     return idTextMap;
 }
+
+// 翻译内容并保存到文件
 async function translateToChineseAndSave(inputFile, outputFile) {
     try {
         const content = readFileSync(inputFile, 'utf8');
@@ -197,8 +212,10 @@ async function translateToChineseAndSave(inputFile, outputFile) {
         console.error('Error:', error);
     }
 }
+
 // 获取命令行参数
 const inputFile = process.argv[2];
 const outputFile = process.argv[3] || 'README.md';
 
+// 执行翻译并保存
 translateToChineseAndSave(inputFile, outputFile);
