@@ -54,7 +54,7 @@ async function translateWithRetry(text, role, context = {}) {
         try {
             console.log(`开始翻译 [${contextInfo}], 长度: ${text.length} 字符`);
             const response = await openai.chat.completions.create({
-                max_tokens: 8192,
+                max_tokens: 32768,
                 stream: false,
                 temperature: 0.1,
                 model: process.env.OPENAI_MODEL_ID,
