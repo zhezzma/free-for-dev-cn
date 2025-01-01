@@ -25,6 +25,8 @@ const CONFIG = {
     maxSectionLength: 7000,    // 每个部分的最大长度
     maxRetries: 5,            // 最大重试次数
     retryDelay: 5000,         // 重试延迟时间(ms)
+    requestInterval: 30000,    // 请求间隔时间(ms)，即每20秒一个请求
+    concurrentLimit: 5,      // 并发请求数限制
 };
 
 /**
@@ -35,6 +37,78 @@ const CONFIG = {
 function convertToId(header) {
     return header.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
+
+
+/**
+ * 信号量类，用于控制并发
+ */
+class Semaphore {
+    constructor(max) {
+        this.max = max;
+        this.count = 0;
+        this.queue = [];
+    }
+
+    async acquire() {
+        if (this.count < this.max) {
+            this.count++;
+            return Promise.resolve();
+        }
+
+        return new Promise(resolve => {
+            this.queue.push(resolve);
+        });
+    }
+
+    release() {
+        this.count--;
+        if (this.queue.length > 0 && this.count < this.max) {
+            this.count++;
+            const next = this.queue.shift();
+            next();
+        }
+    }
+}
+
+
+/**
+ * 队列处理函数
+ * @param {Array} items 待处理项
+ * @param {Function} handler 处理函数
+ * @returns {Promise<Array>} 处理结果
+ */
+async function processQueue(items, handler) {
+    const results = new Array(items.length);
+    const semaphore = new Semaphore(CONFIG.concurrentLimit);
+    const promises = [];
+
+    for (let i = 0; i < items.length; i++) {
+        const promise = (async () => {
+            await semaphore.acquire();
+            try {
+                console.log(`处理队列项 ${i + 1}/${items.length}`);
+                const result = await handler(items[i], i);
+                results[i] = result;
+                
+                // 如果不是最后一项，则等待指定时间
+                if (i < items.length - 1) {
+                    console.log(`等待 ${CONFIG.requestInterval}ms 后处理下一项...`);
+                    await delay(CONFIG.requestInterval);
+                }
+            } catch (error) {
+                console.error(`处理队列项 ${i + 1} 失败:`, error);
+                throw error;
+            } finally {
+                semaphore.release();
+            }
+        })();
+        promises.push(promise);
+    }
+
+    await Promise.all(promises);
+    return results;
+}
+
 
 /**
  * 带重试机制的翻译请求
@@ -163,33 +237,37 @@ async function translateTableOfContents(sections) {
     const idTextMap = {};
 
     console.log(`目录共有 ${tocSection.sections.length} 个子部分需要翻译`);
-    const translatedSections = await Promise.all(tocSection.sections.map(async (section, index) => {
-        console.log(`翻译目录第 ${index + 1}/${tocSection.sections.length} 部分`);
-        const translatedContent = await translateWithRetry(section, `
+    
+    // 使用队列处理替代 Promise.all
+    const translatedSections = await processQueue(
+        tocSection.sections,
+        async (section, index) => {
+            console.log(`翻译目录第 ${index + 1}/${tocSection.sections.length} 部分`);
+            const translatedContent = await translateWithRetry(section, `
 请翻译以下目录项，保持原有的格式:
 1. 保持星号和缩进不变
 2. 只翻译方括号[]内的文本
 3. 保持圆括号()内的链接不变
 4. 确保翻译的通顺性和准确性`, {
-            type: 'toc',
-            sectionId: 'table-of-contents',
-            index: index
-        });
+                type: 'toc',
+                sectionId: 'table-of-contents',
+                index: index
+            });
 
-        // 处理翻译后的目录项
-        const translatedLines = translatedContent.split('\n').map(line => {
-            const match = line.match(linkRegex);
-            if (match) {
-                let [, translatedText, id] = match;
-                translatedText = translatedText.replace(/\s+/g, '');
-                idTextMap[id] = translatedText;
-                return `${tocSection.leadingSpaces[index]}* [${translatedText}](#${translatedText})`;
-            }
-            return line;
-        });
+            const translatedLines = translatedContent.split('\n').map(line => {
+                const match = line.match(linkRegex);
+                if (match) {
+                    let [, translatedText, id] = match;
+                    translatedText = translatedText.replace(/\s+/g, '');
+                    idTextMap[id] = translatedText;
+                    return `${tocSection.leadingSpaces[index]}* [${translatedText}](#${translatedText})`;
+                }
+                return line;
+            });
 
-        return translatedLines.join('\n');
-    }));
+            return translatedLines.join('\n');
+        }
+    );
 
     tocSection.translations = translatedSections;
 
@@ -231,23 +309,27 @@ async function translateToChineseAndSave(inputFile, outputFile) {
         const startTime = Date.now();
 
         // 批量翻译
-        const translatedSections = await Promise.all(allSectionsToTranslate.map(async ({ sectionId, index, text }, totalIndex) => {
-            console.log(`翻译进度: ${totalIndex + 1}/${allSectionsToTranslate.length}`);
-            let translatedContent = await translateWithRetry(text, `
-请将Markdown文本翻译成中文，同时遵守以下规则:
-1. 严格保持原文的Markdown格式不变，包括但不限于标题、列表、代码块、引用等
-2. 专有名词、缩写等保留英文，首次出现时在括号内提供中文解释
-3. 代码块、命令行指令等技术内容保持原样不翻译
-4. 调整语序使翻译符合中文表达习惯，同时保持原意
-5. 保持原文的链接格式不变，只翻译链接文本`, {
-                type: 'content',
-                sectionId: sectionId,
-                index: index
-            });
-
-            translatedContent = translatedContent.replace("(#table-of-contents)", "(#目录)");
-            return { sectionId, index, content: translatedContent };
-        }));
+        // 使用队列处理替代 Promise.all
+        const translatedSections = await processQueue(
+            allSectionsToTranslate,
+            async ({ sectionId, index, text }, totalIndex) => {
+                console.log(`翻译进度: ${totalIndex + 1}/${allSectionsToTranslate.length}`);
+                let translatedContent = await translateWithRetry(text, `
+    请将Markdown文本翻译成中文，同时遵守以下规则:
+    1. 严格保持原文的Markdown格式不变，包括但不限于标题、列表、代码块、引用等
+    2. 专有名词、缩写等保留英文，首次出现时在括号内提供中文解释
+    3. 代码块、命令行指令等技术内容保持原样不翻译
+    4. 调整语序使翻译符合中文表达习惯，同时保持原意
+    5. 保持原文的链接格式不变，只翻译链接文本`, {
+                    type: 'content',
+                    sectionId: sectionId,
+                    index: index
+                });
+    
+                translatedContent = translatedContent.replace("(#table-of-contents)", "(#目录)");
+                return { sectionId, index, content: translatedContent };
+            }
+        );
 
         // 计算翻译用时
         const duration = (Date.now() - startTime) / 1000;
