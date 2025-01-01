@@ -89,16 +89,17 @@ async function processQueue(items, handler) {
                 console.log(`处理队列项 ${i + 1}/${items.length}`);
                 const result = await handler(items[i], i);
                 results[i] = result;
-                
-                // 如果不是最后一项，则等待指定时间
+            } catch (error) {
+                console.error(`处理队列项 ${i + 1} 失败:`, error);
+                // 可以考虑更完善的错误处理机制
+                // 比如将错误信息记录到日志文件，或者根据错误类型进行不同的处理
+                throw error;
+            } finally {
+                // 在 finally 语句块中统一进行等待
                 if (i < items.length - 1) {
                     console.log(`等待 ${CONFIG.requestInterval}ms 后处理下一项...`);
                     await delay(CONFIG.requestInterval);
                 }
-            } catch (error) {
-                console.error(`处理队列项 ${i + 1} 失败:`, error);
-                throw error;
-            } finally {
                 semaphore.release();
             }
         })();
