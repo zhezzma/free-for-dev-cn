@@ -23,8 +23,8 @@ const openai = new OpenAI({
 // 配置参数
 const CONFIG = {
     maxSectionLength: 7000,    // 每个部分的最大长度
-    maxRetries: 3,            // 最大重试次数
-    retryDelay: 2000,         // 重试延迟时间(ms)
+    maxRetries: 5,            // 最大重试次数
+    retryDelay: 5000,         // 重试延迟时间(ms)
 };
 
 /**
