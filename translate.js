@@ -1,9 +1,73 @@
 import { readFileSync, writeFileSync } from 'fs';
 import { OpenAI } from 'openai';
 import dotenv from 'dotenv';
+import {ChatCompletion,getBearToken,setEnvVariable} from "@baiducloud/qianfan";
+
 
 // 加载环境变量
 dotenv.config();
+
+
+async function qianfan() {
+    setEnvVariable('QIANFAN_ACCESS_KEY','');
+    setEnvVariable('QIANFAN_SECRET_KEY','');
+
+    // const qianfan = new  ChatCompletion({
+    //     version: 'v2',
+    // });
+    // const resp = await qianfan.chat({
+    //     messages: [
+    //         {
+    //             role: 'user',
+    //             content: '今天深圳天气',
+    //         },
+    //     ],
+    //  }, "ernie-speed-128k");
+    //  console.log(resp?.choices);
+
+    const bearToken = await getBearToken();
+    console.log(bearToken);
+
+    const openai = new OpenAI({
+        baseURL: "https://qianfan.baidubce.com/v2",
+        apiKey: bearToken.token,
+    });
+    const response = await openai.chat.completions.create({
+        max_tokens: 8192,
+        stream: false,
+        temperature: 0.1,
+        model: "ernie-speed-128k",
+        messages: [
+            {
+                role: 'user',
+                content: '今天深圳天气',
+            },
+        ],
+    });
+    console.log(JSON.stringify(response));
+}
+
+
+// 初始化OpenAI实例
+let openai = new OpenAI({
+    baseURL: process.env.OPENAI_BASE_URL,
+    apiKey: process.env.OPENAI_API_KEY,
+});
+
+if(process.env.OPENAI_API_KEY.includes(":"))
+{
+    const [QIANFAN_ACCESS_KEY,QIANFAN_SECRET_KEY] =  process.env.OPENAI_API_KEY.split(":");
+    setEnvVariable('QIANFAN_ACCESS_KEY',QIANFAN_ACCESS_KEY);
+    setEnvVariable('QIANFAN_SECRET_KEY',QIANFAN_SECRET_KEY);
+    const bearToken = await getBearToken();
+    console.log(bearToken);
+    openai = new OpenAI({
+        baseURL: "https://qianfan.baidubce.com/v2",
+        apiKey: bearToken.token,
+    });
+}
+
+
 
 /**
  * 延迟函数，用于请求失败后的重试等待
@@ -14,15 +78,10 @@ function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// 初始化OpenAI实例
-const openai = new OpenAI({
-    baseURL: process.env.OPENAI_BASE_URL,
-    apiKey: process.env.OPENAI_API_KEY,
-});
 
 // 配置参数
 const CONFIG = {
-    maxSectionLength: 7000,    // 每个部分的最大长度
+    maxSectionLength: 8000,    // 每个部分的最大长度
     maxRetries: 5,            // 最大重试次数
     retryDelay: 5000,         // 重试延迟时间(ms)
     requestInterval: 30000,    // 请求间隔时间(ms)，即每20秒一个请求
@@ -110,6 +169,18 @@ async function processQueue(items, handler) {
     return results;
 }
 
+
+/**
+ * 
+ * @param {Array} items 待处理项
+ * @param {Function} handler 处理函数
+ * @returns {Promise<Array>} 处理结果
+ */
+async function processItemsConcurrently(items, processor) {
+    // 使用 Promise.all 并行处理所有项目
+    const promises = items.map((item, index) => processor(item, index));
+    return Promise.all(promises);
+  }
 
 /**
  * 带重试机制的翻译请求
@@ -240,7 +311,7 @@ async function translateTableOfContents(sections) {
     console.log(`目录共有 ${tocSection.sections.length} 个子部分需要翻译`);
     
     // 使用队列处理替代 Promise.all
-    const translatedSections = await processQueue(
+    const translatedSections = await processItemsConcurrently(
         tocSection.sections,
         async (section, index) => {
             console.log(`翻译目录第 ${index + 1}/${tocSection.sections.length} 部分`);
@@ -249,7 +320,8 @@ async function translateTableOfContents(sections) {
 1. 保持星号和缩进不变
 2. 只翻译方括号[]内的文本
 3. 保持圆括号()内的链接不变
-4. 确保翻译的通顺性和准确性`, {
+4. 确保翻译的通顺性和准确性
+5. 只返回翻译的结果,不包含任何其他说明`, {
                 type: 'toc',
                 sectionId: 'table-of-contents',
                 index: index
@@ -311,7 +383,7 @@ async function translateToChineseAndSave(inputFile, outputFile) {
 
         // 批量翻译
         // 使用队列处理替代 Promise.all
-        const translatedSections = await processQueue(
+        const translatedSections = await processItemsConcurrently(
             allSectionsToTranslate,
             async ({ sectionId, index, text }, totalIndex) => {
                 console.log(`翻译进度: ${totalIndex + 1}/${allSectionsToTranslate.length}`);
@@ -321,7 +393,8 @@ async function translateToChineseAndSave(inputFile, outputFile) {
     2. 专有名词、缩写等保留英文，首次出现时在括号内提供中文解释
     3. 代码块、命令行指令等技术内容保持原样不翻译
     4. 调整语序使翻译符合中文表达习惯，同时保持原意
-    5. 保持原文的链接格式不变，只翻译链接文本`, {
+    5. 保持原文的链接格式不变，只翻译链接文本
+    6. 只返回翻译的结果,不包含任何其他说明`, {
                     type: 'content',
                     sectionId: sectionId,
                     index: index
