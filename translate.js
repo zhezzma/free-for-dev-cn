@@ -321,7 +321,7 @@ async function translateTableOfContents(sections) {
 2. 只翻译方括号[]内的文本
 3. 保持圆括号()内的链接不变
 4. 确保翻译的通顺性和准确性
-5. 只返回翻译的结果,不包含任何其他说明`, {
+5. 只返回翻译的结果,不返回任何无关文字`, {
                 type: 'toc',
                 sectionId: 'table-of-contents',
                 index: index
@@ -394,7 +394,7 @@ async function translateToChineseAndSave(inputFile, outputFile) {
     3. 代码块、命令行指令等技术内容保持原样不翻译
     4. 调整语序使翻译符合中文表达习惯，同时保持原意
     5. 保持原文的链接格式不变，只翻译链接文本
-    6. 只返回翻译的结果,不包含任何其他说明`, {
+    6. 只返回翻译的结果,不返回任何无关文字`, {
                     type: 'content',
                     sectionId: sectionId,
                     index: index
