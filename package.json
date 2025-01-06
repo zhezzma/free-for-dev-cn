@@ -12,6 +12,7 @@
   "description": "",
   "dependencies": {
     "dotenv": "^16.4.5",
-    "openai": "^4.61.0"
+    "openai": "^4.61.0",
+    "@baiducloud/qianfan": "^0.2.2"
   }
 }
