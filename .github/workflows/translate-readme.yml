@@ -4,7 +4,7 @@ name: Translate README
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 2 * * *'  # 每天2点运行运行
+    - cron: '0 2 * * 1'  # 每天2点运行运行
 
 jobs:
   translate:
