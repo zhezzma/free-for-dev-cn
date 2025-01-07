@@ -390,7 +390,7 @@ async function translateToChineseAndSave(inputFile, outputFile) {
                 let translatedContent = await translateWithRetry(text, `
     请将Markdown文本翻译成中文，同时遵守以下规则:
     1. 严格保持原文的Markdown格式不变，包括但不限于标题、列表、代码块、引用等
-    2. 专有名词、缩写等保留英文，首次出现时在括号内提供中文解释
+    2. 专有名词、缩写等保留英文
     3. 代码块、命令行指令等技术内容保持原样不翻译
     4. 调整语序使翻译符合中文表达习惯，同时保持原意
     5. 保持原文的链接格式不变，只翻译链接文本
