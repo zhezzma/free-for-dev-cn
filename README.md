@@ -808,6 +808,7 @@
 * [FreeCodeCamp开源社区](https://www.freecodecamp.org/) - 免费提供数据分析、信息安全、Web开发等领域的课程与认证
 * [全栈开放课程](https://fullstackopen.com/en/) - 大学级现代Web开发课程，涵盖React、Node.js、GraphQL、TypeScript等技术，支持在线自学
 * [智能交互简历](https://interactive-cv.com) - AI驱动的简历生成器，含哈佛/欧式等高级模板转换、PDF导出、职位追踪及带聊天功能的简历分享
+* [ResumeAI](https://withresumeai.com) - AI简历生成器，免费ATS检测（匿名3次/天，免费账号10次/天），开放 State of ATS 2026 数据集（738家雇主，Workday 37.9%）。排行榜仅为付费曝光位，非付费评分
 * [可汗学院编程课程](https://www.khanacademy.org/computing/computer-programming) - 免费HTML/CSS、JavaScript和SQL从基础到进阶教程
 * [LabEx实战实验室](https://labex.io) - 通过交互式实验学习Linux、DevOps、网络安全、编程与数据科学等技能
 * [MIT开放课程](https://ocw.mit.edu/) - 公开2500+门MIT课程资料，YouTube频道[@mitocw](https://www.youtube.com/@mitocw/featured)
