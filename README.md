@@ -1343,6 +1343,7 @@
 * [Mockplus iDoc](https://www.mockplus.com/idoc) - 设计协作交付工具（免费版含3用户5项目）
 
   * [Modeldraw.com](https://modeldraw.com) — 完整的图表平台，支持UML、系统架构图、流程图、思维导图和敏捷工作流。支持无限团队成员实时协作，无需信用卡。
+* [Motomarks](https://motomarks.io/) - 汽车厂商标志图 API 与图片 CDN。免费档每天 1,000 次请求，使用时需保留署名。
 * [Mossaik](https://mossaik.app) - 免费SVG图像生成器，提供波浪、博客和图案等多种工具。
 * [movingpencils.com](https://movingpencils.com) — 基于浏览器的快速矢量编辑器，完全免费。
 * [Nappy](https://nappy.co/) -- 免费的黑人和棕色人种精美照片，可用于商业和个人用途。
