@@ -1613,6 +1613,7 @@
 ## 截图API
 
   * [ApiFlash](https://apiflash.com) — 基于Aws Lambda和Chrome的截图API。支持整页截图、捕获时间参数和视窗尺寸
+* [CurlShot](https://curlshot.com) — 网站截图API，支持URL、HTML或Markdown输入，输出PNG/JPEG/WebP、PDF或滚动视频，并提供MCP服务器。每月100次免费截图，无需信用卡
 * [microlink.io](https://microlink.io/) — 将任何网站转化为数据，包括元标签标准化、精美链接预览、爬虫功能或截图服务。每日免费250次请求
 * [PhantomJsCloud](https://PhantomJsCloud.com) — 浏览器自动化和页面渲染。免费层每日500页。自2017年起提供免费服务
 * [screenshotbase.com](https://screenshotbase.com) - 每月300次免费截图。支持从任意URL截图。快速、免费且可扩展
