@@ -1311,6 +1311,7 @@
 * [DaisyUI](https://daisyui.com/) -- 免费Tailwind CSS组件库（如按钮组件），减少类名书写
 * [easyvectors.com](https://easyvectors.com/) — 免费SVG矢量图库
 * [Excalidraw](https://excalidraw.com/) -- 支持本地保存和导出的在线白板工具
+* [FaviconDL](https://favicondl.com) – 免费、无需 API Key 的 favicon 提取 API，按网址返回网站图标（PNG/SVG/ICO，可缩放 16–512px）或 JSON 元数据
 * [figma.com](https://www.figma.com) — 团队协作设计工具，免费版包含无限文件查看+2名编辑+3个项目
 * [Float UI](https://floatui.com/) - 非设计师也能快速创建现代响应式网站的免费工具
 * [Flows](https://flows.sh/) -- 完全可定制的产品引导平台（免费支持250名月活跃用户）
